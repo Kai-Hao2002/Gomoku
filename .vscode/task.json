@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "build",
+        "type": "shell",
+        "command": "g++",
+        "args": [
+          "-Wall",
+          "-Wextra",
+          "-g3",
+          "main.cpp",
+          "Board.cpp",
+          "AIPlayer.cpp",
+          "-o",
+          "gomoku"
+        ],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "problemMatcher": ["$gcc"],
+        "detail": "Generated task for C++ build"
+      }
+    ]
+  }
+  
