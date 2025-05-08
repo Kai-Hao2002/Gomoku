@@ -3,23 +3,46 @@
 #include <thread>
 #include <chrono>
 #include <future>
+#include <random>
 #include <iostream>
+#include <unordered_map>
 
 AIPlayer::AIPlayer(char symbol) : Player(symbol) {
     opponentSymbol = (symbol == 'X') ? 'O' : 'X';
+    initZobrist();
 }
 
-// --- 強化版：評估整體盤面 --- //
+void AIPlayer::initZobrist() {
+    std::mt19937_64 rng(42); // 固定種子便於重現
+    std::uniform_int_distribution<uint64_t> dist;
+
+    for (int i = 0; i < Board::SIZE; ++i) {
+        for (int j = 0; j < Board::SIZE; ++j) {
+            zobristTable[i][j][0] = dist(rng); // X
+            zobristTable[i][j][1] = dist(rng); // O
+        }
+    }
+}
+
+uint64_t AIPlayer::computeZobristHash(const Board& board) {
+    uint64_t hash = 0;
+    for (int i = 0; i < Board::SIZE; ++i) {
+        for (int j = 0; j < Board::SIZE; ++j) {
+            char cell = board.getCell(i, j);
+            if (cell == 'X') hash ^= zobristTable[i][j][0];
+            else if (cell == 'O') hash ^= zobristTable[i][j][1];
+        }
+    }
+    return hash;
+}
+
 int AIPlayer::evaluateBoard(Board& board) {
     int score = 0;
-    std::vector<std::vector<char>> directions;
 
     // 橫列
     for (int i = 0; i < Board::SIZE; ++i) {
         std::vector<char> row;
-        for (int j = 0; j < Board::SIZE; ++j) {
-            row.push_back(board.getCell(i, j));
-        }
+        for (int j = 0; j < Board::SIZE; ++j) row.push_back(board.getCell(i, j));
         score += evaluateLine(row, symbol);
         score -= evaluateLine(row, opponentSymbol);
     }
@@ -27,55 +50,39 @@ int AIPlayer::evaluateBoard(Board& board) {
     // 直行
     for (int j = 0; j < Board::SIZE; ++j) {
         std::vector<char> col;
-        for (int i = 0; i < Board::SIZE; ++i) {
-            col.push_back(board.getCell(i, j));
-        }
+        for (int i = 0; i < Board::SIZE; ++i) col.push_back(board.getCell(i, j));
         score += evaluateLine(col, symbol);
         score -= evaluateLine(col, opponentSymbol);
     }
 
-    // 左上到右下斜線
+    // 對角線
     for (int k = 0; k <= 2 * (Board::SIZE - 1); ++k) {
-        std::vector<char> diag;
+        std::vector<char> diag1, diag2;
         for (int i = 0; i < Board::SIZE; ++i) {
-            int j = k - i;
-            if (j >= 0 && j < Board::SIZE) {
-                diag.push_back(board.getCell(i, j));
-            }
+            int j1 = k - i;
+            int j2 = i - (k - Board::SIZE + 1);
+            if (j1 >= 0 && j1 < Board::SIZE) diag1.push_back(board.getCell(i, j1));
+            if (j2 >= 0 && j2 < Board::SIZE) diag2.push_back(board.getCell(i, j2));
         }
-        score += evaluateLine(diag, symbol);
-        score -= evaluateLine(diag, opponentSymbol);
-    }
-
-    // 右上到左下斜線
-    for (int k = -Board::SIZE + 1; k < Board::SIZE; ++k) {
-        std::vector<char> diag;
-        for (int i = 0; i < Board::SIZE; ++i) {
-            int j = i - k;
-            if (j >= 0 && j < Board::SIZE) {
-                diag.push_back(board.getCell(i, j));
-            }
-        }
-        score += evaluateLine(diag, symbol);
-        score -= evaluateLine(diag, opponentSymbol);
+        score += evaluateLine(diag1, symbol);
+        score -= evaluateLine(diag1, opponentSymbol);
+        score += evaluateLine(diag2, symbol);
+        score -= evaluateLine(diag2, opponentSymbol);
     }
 
     return score;
 }
 
-// --- 單行評分：根據連線數與封閉程度 --- //
 int AIPlayer::evaluateLine(const std::vector<char>& line, char currentSymbol) {
     int score = 0;
     const int n = line.size();
-
     for (int i = 0; i <= n - 5; ++i) {
         int count = 0;
         bool blockedLeft = false, blockedRight = false;
 
         for (int j = 0; j < 5; ++j) {
-            if (line[i + j] == currentSymbol) {
-                count++;
-            } else if (line[i + j] != '.') {
+            if (line[i + j] == currentSymbol) count++;
+            else if (line[i + j] != '.') {
                 count = -1;
                 break;
             }
@@ -85,12 +92,10 @@ int AIPlayer::evaluateLine(const std::vector<char>& line, char currentSymbol) {
             if (i == 0 || line[i - 1] != '.') blockedLeft = true;
             if (i + 5 >= n || line[i + 5] != '.') blockedRight = true;
 
-            int base = 1;
-            if (count == 5) base = 100000;
-            else if (count == 4) base = 10000;
-            else if (count == 3) base = 1000;
-            else if (count == 2) base = 100;
-            else base = 10;
+            int base = (count == 5) ? 100000 :
+                       (count == 4) ? 10000 :
+                       (count == 3) ? 1000 :
+                       (count == 2) ? 100 : 10;
 
             if (blockedLeft && blockedRight) base /= 4;
             else if (blockedLeft || blockedRight) base /= 2;
@@ -101,73 +106,102 @@ int AIPlayer::evaluateLine(const std::vector<char>& line, char currentSymbol) {
     return score;
 }
 
+// --- 只產生鄰近已下棋子的空格（效率優化） --- //
 std::vector<std::pair<int, int>> AIPlayer::generateMoves(Board& board) {
     std::vector<std::pair<int, int>> moves;
+    const int range = 1;
+
     for (int i = 0; i < Board::SIZE; ++i) {
         for (int j = 0; j < Board::SIZE; ++j) {
-            if (board.getCell(i, j) == '.') {
-                moves.push_back({i, j});
+            if (board.getCell(i, j) != '.') continue;
+
+            for (int dx = -range; dx <= range; ++dx) {
+                for (int dy = -range; dy <= range; ++dy) {
+                    int ni = i + dx, nj = j + dy;
+                    if (ni >= 0 && ni < Board::SIZE && nj >= 0 && nj < Board::SIZE &&
+                        board.getCell(ni, nj) != '.') {
+                        moves.emplace_back(i, j);
+                        goto next;
+                    }
+                }
             }
+        next:;
         }
     }
+
     return moves;
 }
 
+// --- Minimax + Alpha-Beta + Zobrist Transposition Table --- //
 int AIPlayer::minimax(Board& board, int depth, bool maximizing, int alpha, int beta) {
+    uint64_t hash = computeZobristHash(board);
+    if (transpositionTable.count(hash)) return transpositionTable[hash];
+
     if (depth == 0 || board.isFull()) {
-        return evaluateBoard(board);
+        int eval = evaluateBoard(board);
+        transpositionTable[hash] = eval;
+        return eval;
     }
 
     auto moves = generateMoves(board);
-    if (maximizing) {
-        int maxEval = std::numeric_limits<int>::min();
-        for (auto [r, c] : moves) {
-            board.placePiece(r, c, symbol);
-            if (board.isWin(r, c, symbol)) {
-                board.placePiece(r, c, '.');
-                return 100000;
-            }
-            int eval = minimax(board, depth - 1, false, alpha, beta);
-            board.placePiece(r, c, '.');
-            maxEval = std::max(maxEval, eval);
-            alpha = std::max(alpha, eval);
-            if (beta <= alpha) break;
+    int bestVal = maximizing ? std::numeric_limits<int>::min() : std::numeric_limits<int>::max();
+
+    for (auto [r, c] : moves) {
+        board.placePiece(r, c, maximizing ? symbol : opponentSymbol);
+        int score = 0;
+
+        if (board.isWin(r, c, maximizing ? symbol : opponentSymbol)) {
+            score = maximizing ? 100000 : -100000;
+        } else {
+            score = minimax(board, depth - 1, !maximizing, alpha, beta);
         }
-        return maxEval;
-    } else {
-        int minEval = std::numeric_limits<int>::max();
-        for (auto [r, c] : moves) {
-            board.placePiece(r, c, opponentSymbol);
-            if (board.isWin(r, c, opponentSymbol)) {
-                board.placePiece(r, c, '.');
-                return -100000;
-            }
-            int eval = minimax(board, depth - 1, true, alpha, beta);
-            board.placePiece(r, c, '.');
-            minEval = std::min(minEval, eval);
-            beta = std::min(beta, eval);
-            if (beta <= alpha) break;
+
+        board.placePiece(r, c, '.');
+
+        if (maximizing) {
+            bestVal = std::max(bestVal, score);
+            alpha = std::max(alpha, score);
+        } else {
+            bestVal = std::min(bestVal, score);
+            beta = std::min(beta, score);
         }
-        return minEval;
+
+        if (beta <= alpha) break;
     }
+
+    transpositionTable[hash] = bestVal;
+    return bestVal;
 }
 
-// --- 平行運算版本：用 std::async 執行每個落子位置的搜尋 --- //
+// --- 最佳化平行運算：避免過多 async 呼叫 --- //
 std::pair<int, int> AIPlayer::findBestMove(Board& board) {
     int bestScore = std::numeric_limits<int>::min();
     std::pair<int, int> bestMove = {-1, -1};
 
+    auto moves = generateMoves(board);
+    const int PARALLEL_LIMIT = 8;
     std::vector<std::future<std::pair<int, std::pair<int, int>>>> futures;
-    for (auto [r, c] : generateMoves(board)) {
-        if (board.getCell(r, c) != '.') continue;
 
-        // ✅ 平行運算：每一個位置都用 std::async 開一條背景執行緒
-        futures.push_back(std::async(std::launch::async, [&, r, c]() {
-            Board copy = board;
-            copy.placePiece(r, c, symbol);
-            int score = minimax(copy, 3, false, INT_MIN, INT_MAX);
-            return std::make_pair(score, std::make_pair(r, c));
-        }));
+    for (size_t i = 0; i < moves.size(); ++i) {
+        auto [r, c] = moves[i];
+        Board copy = board;
+        copy.placePiece(r, c, symbol);
+
+        if (i < PARALLEL_LIMIT) {
+            futures.push_back(std::async(std::launch::async, [=, &board]() {
+                Board copy = board;
+                copy.placePiece(r, c, symbol);
+                int score = minimax(copy, 4, false, INT_MIN, INT_MAX); // 深度 4
+                return std::make_pair(score, std::make_pair(r, c));
+            }));
+        }
+        else {
+            int score = minimax(copy, 4, false, INT_MIN, INT_MAX);
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = {r, c};
+            }
+        }
     }
 
     for (auto& f : futures) {
@@ -186,6 +220,7 @@ void AIPlayer::makeMove(Board& board, int& row, int& col) {
     std::cout.flush();
 
     auto start = std::chrono::steady_clock::now();
+    transpositionTable.clear(); // 每次重新開始
     std::tie(row, col) = findBestMove(board);
     auto end = std::chrono::steady_clock::now();
 

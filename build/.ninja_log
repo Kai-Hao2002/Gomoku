@@ -1,14 +1,14 @@
 # ninja log v6
-19	630	7683478405624797	CMakeFiles/main.dir/main.cpp.obj	64233109ebacd694
-17	1413	7683480251447326	CMakeFiles/main.dir/src/AIPlayer.cpp.obj	de6accbf2d27fb5a
+18	400	7683480584001480	CMakeFiles/main.dir/main.cpp.obj	64233109ebacd694
+18	2212	7684121563840092	CMakeFiles/main.dir/src/AIPlayer.cpp.obj	de6accbf2d27fb5a
 6	590	7683403057956852	CMakeFiles/main.dir/Board.cpp.obj	eef176aae9bbf969
 9	1247	7683403057988586	CMakeFiles/main.dir/AIPlayer.cpp.obj	a00d6256835807fb
-1413	1536	7683480265406331	main.exe	8bd2c5922a7083ec
+2213	2642	7684121585777216	main.exe	8bd2c5922a7083ec
 22	92	7683407527927459	CMakeFiles/main.dir/src/GameManager.cpp.obj	509aab0450e9e5fb
 30	383	7683474851015238	CMakeFiles/main.dir/src/HumanPlayer.cpp.obj	24c9ff36793b7fb2
 24	441	7683474850969735	CMakeFiles/main.dir/src/Board.cpp.obj	e47332bf70ccf820
 33	376	7683474851048469	CMakeFiles/main.dir/src/Player.cpp.obj	7535b1df8ecde744
 27	451	7683474850990731	CMakeFiles/main.dir/src/Game.cpp.obj	d5d4d82063bc9b48
-18	400	7683480584001480	CMakeFiles/main.dir/main.cpp.obj	64233109ebacd694
-21	1125	7683480584035346	CMakeFiles/main.dir/src/AIPlayer.cpp.obj	de6accbf2d27fb5a
-1125	1245	7683480595078569	main.exe	8bd2c5922a7083ec
+23	531	7684128774450626	CMakeFiles/main.dir/main.cpp.obj	64233109ebacd694
+27	1467	7684128774482750	CMakeFiles/main.dir/src/AIPlayer.cpp.obj	de6accbf2d27fb5a
+1467	1593	7684128788891939	main.exe	8bd2c5922a7083ec
