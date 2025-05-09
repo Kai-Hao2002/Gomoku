@@ -2,19 +2,12 @@
 
 Board::Board() : grid(SIZE, std::vector<char>(SIZE, '.')) {}
 
-void Board::print() const {
-    std::cout << "   ";
-    for (int i = 0; i < SIZE; ++i) std::cout << i % 10 << " ";
-    std::cout << "\n";
-    for (int i = 0; i < SIZE; ++i) {
-        std::cout << i % 10 << "  ";
-        for (int j = 0; j < SIZE; ++j) {
-            std::cout << grid[i][j] << " ";
-        }
-        std::cout << "\n";
-    }
-}
 
+void Board::reset() {
+    for (int i = 0; i < SIZE; ++i)
+        for (int j = 0; j < SIZE; ++j)
+            grid[i][j] = '.';
+}
 bool Board::placePiece(int row, int col, char symbol) {
     if (row < 0 || row >= SIZE || col < 0 || col >= SIZE || grid[row][col] != '.') return false;
     grid[row][col] = symbol;

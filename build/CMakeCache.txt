@@ -243,6 +243,15 @@ CMAKE_TAPI:FILEPATH=CMAKE_TAPI-NOTFOUND
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
 //Value Computed by CMake
+GomokuApp_BINARY_DIR:STATIC=C:/Users/User/Documents/gomoku/build
+
+//Value Computed by CMake
+GomokuApp_IS_TOP_LEVEL:STATIC=ON
+
+//Value Computed by CMake
+GomokuApp_SOURCE_DIR:STATIC=C:/Users/User/Documents/gomoku
+
+//Value Computed by CMake
 GomokuProject_BINARY_DIR:STATIC=C:/Users/User/Documents/gomoku/build
 
 //Value Computed by CMake
@@ -259,6 +268,12 @@ Gomoku_IS_TOP_LEVEL:STATIC=ON
 
 //Value Computed by CMake
 Gomoku_SOURCE_DIR:STATIC=C:/Users/User/Documents/gomoku
+
+//The directory containing a CMake configuration file for SFML.
+SFML_DIR:PATH=C:/msys64/ucrt64/lib/cmake/SFML
+
+//Path to a file.
+SFML_DOC_DIR:PATH=SFML_DOC_DIR-NOTFOUND
 
 
 ########################

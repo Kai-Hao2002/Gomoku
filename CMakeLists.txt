@@ -3,15 +3,17 @@ project(GomokuProject)
 
 set(CMAKE_CXX_STANDARD 17)
 
-# Include header files
+# 包含頭文件
 include_directories(include)
 
-# Add source files
-file(GLOB SOURCES "src/*.cpp" "main.cpp")
+# 添加源文件
+file(GLOB SOURCES "src/*.cpp" "main_gui.cpp")
 
-# 可加上 -pthread 開啟平行運算支援
+# 設置可執行檔案
 add_executable(main ${SOURCES})
 
-# 如果之後加 UI (SFML)
-# find_package(SFML 2.5 COMPONENTS graphics window system REQUIRED)
-# target_link_libraries(main sfml-graphics sfml-window sfml-system)
+# 查找 SFML
+find_package(SFML 2.5 COMPONENTS graphics window system REQUIRED)
+
+# 將 SFML 與你的項目鏈接
+target_link_libraries(main sfml-graphics sfml-window sfml-system)
