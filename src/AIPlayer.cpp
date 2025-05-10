@@ -44,7 +44,7 @@ int AIPlayer::evaluateBoard(Board& board) {
         std::vector<char> row;
         for (int j = 0; j < Board::SIZE; ++j) row.push_back(board.getCell(i, j));
         score += evaluateLine(row, symbol);
-        score -= evaluateLine(row, opponentSymbol);
+        score -= evaluateLine(row, opponentSymbol); // 加入防守視角
     }
 
     // 直行
@@ -73,9 +73,11 @@ int AIPlayer::evaluateBoard(Board& board) {
     return score;
 }
 
+
 int AIPlayer::evaluateLine(const std::vector<char>& line, char currentSymbol) {
     int score = 0;
     const int n = line.size();
+
     for (int i = 0; i <= n - 5; ++i) {
         int count = 0;
         bool blockedLeft = false, blockedRight = false;
@@ -92,10 +94,12 @@ int AIPlayer::evaluateLine(const std::vector<char>& line, char currentSymbol) {
             if (i == 0 || line[i - 1] != '.') blockedLeft = true;
             if (i + 5 >= n || line[i + 5] != '.') blockedRight = true;
 
-            int base = (count == 5) ? 100000 :
-                       (count == 4) ? 10000 :
-                       (count == 3) ? 1000 :
-                       (count == 2) ? 100 : 10;
+            int base = 0;
+            if (count == 5) base = 100000;
+            else if (count == 4) base = (blockedLeft || blockedRight) ? 10000 : 50000;
+            else if (count == 3) base = (!blockedLeft && !blockedRight) ? 5000 : 1000;
+            else if (count == 2) base = 200;
+            else base = 50;
 
             if (blockedLeft && blockedRight) base /= 4;
             else if (blockedLeft || blockedRight) base /= 2;
@@ -105,6 +109,7 @@ int AIPlayer::evaluateLine(const std::vector<char>& line, char currentSymbol) {
     }
     return score;
 }
+
 
 // --- 只產生鄰近已下棋子的空格（效率優化） --- //
 std::vector<std::pair<int, int>> AIPlayer::generateMoves(Board& board) {
@@ -173,8 +178,16 @@ int AIPlayer::minimax(Board& board, int depth, bool maximizing, int alpha, int b
     return bestVal;
 }
 
-// --- 最佳化平行運算：避免過多 async 呼叫 --- //
 std::pair<int, int> AIPlayer::findBestMove(Board& board) {
+    
+    // 1. 優先阻止對手的四連或三連威脅
+    auto blockingMove = findBlockingMoveIfThreat(board);
+    if (blockingMove) {
+        return *blockingMove;
+    }
+
+
+    // 2. 沒有威脅時：使用 minimax + evaluateBoard() 找最好的進攻位置
     int bestScore = std::numeric_limits<int>::min();
     std::pair<int, int> bestMove = {-1, -1};
 
@@ -191,11 +204,10 @@ std::pair<int, int> AIPlayer::findBestMove(Board& board) {
             futures.push_back(std::async(std::launch::async, [=, &board]() {
                 Board copy = board;
                 copy.placePiece(r, c, symbol);
-                int score = minimax(copy, 4, false, INT_MIN, INT_MAX); // 深度 4
+                int score = minimax(copy, 4, false, INT_MIN, INT_MAX);
                 return std::make_pair(score, std::make_pair(r, c));
             }));
-        }
-        else {
+        } else {
             int score = minimax(copy, 4, false, INT_MIN, INT_MAX);
             if (score > bestScore) {
                 bestScore = score;
@@ -215,6 +227,9 @@ std::pair<int, int> AIPlayer::findBestMove(Board& board) {
     return bestMove;
 }
 
+
+
+
 void AIPlayer::makeMove(Board& board, int& row, int& col) {
     std::cout << "AI (" << symbol << ") is thinking...\n";
     std::cout.flush();
@@ -226,4 +241,112 @@ void AIPlayer::makeMove(Board& board, int& row, int& col) {
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     std::cout << "AI decided move in " << duration << " ms.\n";
+}
+bool AIPlayer::hasDangerousThree(Board& board, char checkSymbol) {
+    const int SIZE = Board::SIZE;
+    auto isValid = [&](int r, int c) {
+        return r >= 0 && r < SIZE && c >= 0 && c < SIZE;
+    };
+
+    auto checkPattern = [&](int r, int c, int dr, int dc) {
+        std::string line;
+        for (int i = -1; i <= 4; ++i) {  // 掃 6 格長的區段，涵蓋中間空格情形
+            int nr = r + dr * i;
+            int nc = c + dc * i;
+            if (!isValid(nr, nc)) {
+                line += " ";  // 邊界算阻擋
+            } else {
+                line += board.getCell(nr, nc);
+            }
+        }
+
+        // 危險三連模式：中間插空或兩端都空的三個連續棋子
+        return (line.find(".XXX.") != std::string::npos ||
+                line.find("X.XX")  != std::string::npos ||
+                line.find("XX.X")  != std::string::npos);
+    };
+
+    for (int i = 0; i < SIZE; ++i) {
+        for (int j = 0; j < SIZE; ++j) {
+            if (board.getCell(i, j) != checkSymbol) continue;
+
+            // 檢查四個方向：橫、直、斜（↘）、反斜（↙）
+            if (checkPattern(i, j, 0, 1) ||     // →
+                checkPattern(i, j, 1, 0) ||     // ↓
+                checkPattern(i, j, 1, 1) ||     // ↘
+                checkPattern(i, j, 1, -1)) {    // ↙
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+std::optional<std::pair<int, int>> AIPlayer::findBlockingMoveIfThreat(Board& board) {
+    auto checkLine = [&](int startR, int startC, int dr, int dc, int length) -> std::optional<std::pair<int, int>> {
+        int count = 0;
+        std::pair<int, int> emptySpot = {-1, -1};
+
+        for (int i = 0; i < length; ++i) {
+            int r = startR + i * dr;
+            int c = startC + i * dc;
+            if (r < 0 || r >= Board::SIZE || c < 0 || c >= Board::SIZE)
+                return std::nullopt;
+
+            char cell = board.getCell(r, c);
+            if (cell == opponentSymbol) {
+                count++;
+            } else if (cell == '.') {
+                if (emptySpot.first == -1)
+                    emptySpot = {r, c};
+                else
+                    return std::nullopt; // 多於一個空格，不算連線威脅
+            } else {
+                return std::nullopt;
+            }
+        }
+
+        if ((length == 5 && count == 4) || (length == 4 && count == 3))
+            return emptySpot;
+
+        return std::nullopt;
+    };
+
+    // 優先檢查 4 連（5 格中有一空）=> 急需阻止
+    for (int r = 0; r < Board::SIZE; ++r) {
+        for (int c = 0; c < Board::SIZE; ++c) {
+            for (auto [dr, dc] : std::vector<std::pair<int, int>>{{0,1}, {1,0}, {1,1}, {1,-1}}) {
+                auto move = checkLine(r, c, dr, dc, 5);
+                if (move) return move;
+            }
+        }
+    }
+
+    // 若無，再檢查 3 連（4 格中有一空）=> 提前防守
+    for (int r = 0; r < Board::SIZE; ++r) {
+        for (int c = 0; c < Board::SIZE; ++c) {
+            for (auto [dr, dc] : std::vector<std::pair<int, int>>{{0,1}, {1,0}, {1,1}, {1,-1}}) {
+                auto move = checkLine(r, c, dr, dc, 4);
+                if (move) return move;
+            }
+        }
+    }
+
+    return std::nullopt;
+}
+
+
+std::optional<std::pair<int, int>> AIPlayer::findWinningMove(Board& board) {
+    auto moves = generateMoves(board);
+
+    for (auto [r, c] : moves) {
+        board.placePiece(r, c, symbol);
+        if (board.isWin(r, c, symbol)) {
+            board.placePiece(r, c, '.'); // 還原
+            return std::make_pair(r, c); // 我可以贏，馬上下
+        }
+        board.placePiece(r, c, '.');
+    }
+
+    return std::nullopt;
 }
