@@ -6,7 +6,8 @@
 #include "GameWindow.hpp"
 
 const float VIRTUAL_WIDTH = 640;
-const float VIRTUAL_HEIGHT = 640;
+const float VIRTUAL_HEIGHT = 700;  // 多出 60px 顯示資訊欄
+
 
 bool showModeSelection(sf::RenderWindow& window, sf::Font& font, bool& isPvP) {
     sf::Text title("Select Game Mode", font, 36);

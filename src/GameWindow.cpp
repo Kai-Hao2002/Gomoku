@@ -21,20 +21,49 @@ bool GameWindow::run(sf::RenderWindow& window, sf::Font& font) {
     board = Board();  // 重置棋盤
     justRestarted = true;
 
+    // 創建顯示回合資訊的文字
+    sf::Text turnText;
+    turnText.setFont(font);
+    turnText.setCharacterSize(18);  // 設定字型大小
+    turnText.setFillColor(sf::Color::Black);  // 設定文字顏色
+    turnText.setPosition(10, 700 - 30); // 置於畫面下方
+
     while (window.isOpen() && !wantToReturnToMenu && !wantToExit) {
         handleEvents(window);
         update();
 
         window.clear(sf::Color::White);
-        draw(window);
+        draw(window, font);
+
+        // 根據當前玩家顯示不同的回合資訊
+        if (gameOver) {
+            turnText.setString("");  // 遊戲結束時隱藏回合資訊
+        } else {
+            // 清除過期的文字，並只顯示當前玩家的回合
+            if (currentPlayer->getSymbol() == 'X') {
+                turnText.setString("Player 1's Turn (Black)");
+            } else if (currentPlayer->getSymbol() == 'O') {
+                turnText.setString("Player 2's Turn (White)");
+            }
+        }
+
+        window.draw(turnText); // 繪製回合訊息
+
         if (gameOver) {
             displayResult(window, font);  // 顯示遊戲結束畫面
         }
+
         window.display();
     }
 
     return wantToReturnToMenu; // true 表示回主選單，false 表示退出
 }
+
+
+
+
+
+
 
 void GameWindow::handleEvents(sf::RenderWindow& window) {
     sf::Event event;
@@ -83,7 +112,6 @@ void GameWindow::handleEvents(sf::RenderWindow& window) {
         }
     }
 }
-
 void GameWindow::update() {
     if (gameOver || isPvP) return;
 
@@ -104,23 +132,32 @@ void GameWindow::update() {
     }
 }
 
-void GameWindow::draw(sf::RenderWindow& window) {
-    window.clear(sf::Color(255, 248, 220)); // 背景色：Cornsilk
 
+void GameWindow::draw(sf::RenderWindow& window, sf::Font& font) {
+    window.clear(sf::Color(255, 248, 220)); // Cornsilk 背景
+
+    // ✅ 顯示玩家資訊欄（下方）
+    sf::Text infoText;
+    infoText.setFont(font);
+    infoText.setCharacterSize(18);
+    infoText.setFillColor(sf::Color::Black);
+    infoText.setString("Player 1: Black (X)    Player 2: White (O)");
+    infoText.setPosition(10, 650);  // 棋盤下方
+
+
+    window.draw(infoText);
+
+
+    // 🧱 繪製棋盤格與棋子（維持原本位置）
     sf::RectangleShape cell(sf::Vector2f(CELL_SIZE - 2, CELL_SIZE - 2));
     for (int i = 0; i < Board::SIZE; ++i) {
         for (int j = 0; j < Board::SIZE; ++j) {
             cell.setPosition(j * CELL_SIZE + 1, i * CELL_SIZE + 1);
-            cell.setFillColor(sf::Color(245, 222, 179)); // 淺木色
+            cell.setFillColor(sf::Color(245, 222, 179));
             cell.setOutlineThickness(1);
-            cell.setOutlineColor(sf::Color(160, 82, 45)); // 深棕線
+            cell.setOutlineColor(sf::Color(160, 82, 45));
             window.draw(cell);
-        }
-    }
 
-    // 繪製棋子
-    for (int i = 0; i < Board::SIZE; ++i) {
-        for (int j = 0; j < Board::SIZE; ++j) {
             char val = board.getCell(i, j);
             if (val == 'X' || val == 'O') {
                 sf::CircleShape piece(CELL_SIZE / 2 - 6);
@@ -133,6 +170,8 @@ void GameWindow::draw(sf::RenderWindow& window) {
         }
     }
 }
+
+
 void GameWindow::displayResult(sf::RenderWindow& window, sf::Font& font) {
     // 滑鼠位置
     sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
@@ -149,26 +188,37 @@ void GameWindow::displayResult(sf::RenderWindow& window, sf::Font& font) {
     resultText.setFont(font);
     resultText.setCharacterSize(48);  // 放大文字
     resultText.setFillColor(sf::Color::Yellow);  // 高亮顯示結果
+    resultText.setOutlineColor(sf::Color::Black);  // 加黑邊讓文字清楚
+    resultText.setOutlineThickness(2);
     float animScale = 1.f + 0.2f * sin(clock.getElapsedTime().asSeconds() * 2.f);  // 動畫效果：逐漸放大
 
+    // 設定文字內容
     if (board.isFull() && !board.isWin(lastMoveRow, lastMoveCol, lastPlayerSymbol)) {
         resultText.setString("It's a draw!");
     } else if (board.isWin(lastMoveRow, lastMoveCol, lastPlayerSymbol)) {
-        if (lastPlayerSymbol == 'X')
-            resultText.setString("Player 1 (X) wins!");
-        else
-            resultText.setString("Player 2 (O) wins!");
+        resultText.setString(lastPlayerSymbol == 'X' ? "Player 1 (X) wins!" : "Player 2 (O) wins!");
     }
 
-    resultText.setPosition(
-        640 / 2 - resultText.getLocalBounds().width / 2,
-        640 / 2 - resultText.getLocalBounds().height / 2 - 100
-    );
-    window.draw(resultText);
-
-    // 動畫效果：文字放大
+   // 動畫縮放
     resultText.setScale(animScale, animScale);
-    window.draw(resultText); // 畫出結果文字
+
+    // 計算位置
+    sf::FloatRect textBounds = resultText.getLocalBounds();
+    float textX = 640.f / 2.f - textBounds.width / 2.f;
+    float textY = 640.f / 2.f - textBounds.height / 2.f - 120.f;
+    resultText.setPosition(textX, textY);
+
+    // 建立背景框框
+    sf::RectangleShape resultBox;
+    resultBox.setSize(sf::Vector2f(textBounds.width + 40.f, textBounds.height + 30.f));
+    resultBox.setPosition(textX - 20.f, textY - 15.f);
+    resultBox.setFillColor(sf::Color(50, 50, 50, 200));  // 半透明深灰背景
+    resultBox.setOutlineColor(sf::Color::Yellow);        // 黃色邊框
+    resultBox.setOutlineThickness(3.f);
+
+    // 畫出背景框與文字
+    window.draw(resultBox);
+    window.draw(resultText);
 
     // ===== Restart 按鈕繪製 =====
     restartButton.setSize(sf::Vector2f(200, 50));
@@ -233,4 +283,29 @@ void GameWindow::displayResult(sf::RenderWindow& window, sf::Font& font) {
         exitButton.getPosition().y + 10
     );
     window.draw(exitText);
+    // 資訊欄背景
+    sf::RectangleShape infoBar(sf::Vector2f(window.getSize().x, 40.f));
+    infoBar.setFillColor(sf::Color(200, 200, 200));
+    infoBar.setPosition(0, 0);
+    window.draw(infoBar);
+
+    // 顯示玩家資訊欄
+    sf::Text infoText;
+    infoText.setFont(font);
+    infoText.setCharacterSize(20);
+    infoText.setFillColor(sf::Color::Black);
+    infoText.setString("Player 1: Black (X)    Player 2: White (O)");
+    infoText.setPosition(10, 10); // 上方 10px 的位置
+    window.draw(infoText);
+
+    // 顯示玩家回合資訊
+    sf::Text turnText;
+    turnText.setFont(font);
+    turnText.setCharacterSize(18);
+    turnText.setFillColor(currentPlayer->getSymbol() == 'X' ? sf::Color::Black : sf::Color::White);
+    turnText.setString(currentPlayer->getSymbol() == 'X' ? "Player 1's Turn (Black)" : "Player 2's Turn (White)");
+    turnText.setPosition(10, 670);  // 設置顯示位置
+    window.draw(turnText);  // 顯示回合文字
+
+
 }

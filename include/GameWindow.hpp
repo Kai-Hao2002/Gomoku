@@ -12,6 +12,9 @@ public:
 private:
     static constexpr int CELL_SIZE = 40;
 
+    char currentPlayerSymbol = 'X'; // 初始為 Player 1（黑子）
+
+
     std::unique_ptr<Player> p1, p2;
     Player* currentPlayer;
     Board board;
@@ -36,6 +39,6 @@ private:
 
     void handleEvents(sf::RenderWindow& window);
     void update();
-    void draw(sf::RenderWindow& window);
+    void draw(sf::RenderWindow& window,sf::Font& font);
     void displayResult(sf::RenderWindow& window, sf::Font& font);
 };
