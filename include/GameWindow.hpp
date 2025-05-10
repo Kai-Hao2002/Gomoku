@@ -23,6 +23,9 @@ private:
     int lastMoveRow = -1;
     int lastMoveCol = -1;
     char lastPlayerSymbol = ' ';
+    float restartHoverAlpha = 0.f;
+    float exitHoverAlpha = 0.f;
+
 
     char winner = ' '; // 'X', 'O', or ' ' for draw
 

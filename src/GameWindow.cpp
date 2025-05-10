@@ -2,6 +2,8 @@
 #include "HumanPlayer.hpp"
 #include "AIPlayer.hpp"
 #include <iostream>
+#include <SFML/System.hpp>  // 引入 sf::Clock
+#include <cmath>  // 引入 <cmath> 库以使用 sin 函数
 
 GameWindow::GameWindow(std::unique_ptr<Player> p1, std::unique_ptr<Player> p2, bool isPvP)
     : p1(std::move(p1)), p2(std::move(p2)), isPvP(isPvP), gameOver(false) {
@@ -132,29 +134,63 @@ void GameWindow::draw(sf::RenderWindow& window) {
     }
 }
 void GameWindow::displayResult(sf::RenderWindow& window, sf::Font& font) {
+    // 滑鼠位置
+    sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    bool hoveringRestart = restartButton.getGlobalBounds().contains(mousePos);
+    bool hoveringExit = exitButton.getGlobalBounds().contains(mousePos);
+
+    // 更新 hover alpha 值（漸變動畫）
+    restartHoverAlpha = hoveringRestart ? std::min(255.f, restartHoverAlpha + 10.f) : std::max(0.f, restartHoverAlpha - 10.f);
+    exitHoverAlpha = hoveringExit ? std::min(255.f, exitHoverAlpha + 10.f) : std::max(0.f, exitHoverAlpha - 10.f);
+
+    // 結果文字
     sf::Text resultText;
+    sf::Clock clock;
     resultText.setFont(font);
-    resultText.setCharacterSize(40);
-    resultText.setFillColor(sf::Color(50, 50, 50)); // 深灰色
-    resultText.setStyle(sf::Text::Bold);
+    resultText.setCharacterSize(48);  // 放大文字
+    resultText.setFillColor(sf::Color::Yellow);  // 高亮顯示結果
+    float animScale = 1.f + 0.2f * sin(clock.getElapsedTime().asSeconds() * 2.f);  // 動畫效果：逐漸放大
 
     if (board.isFull() && !board.isWin(lastMoveRow, lastMoveCol, lastPlayerSymbol)) {
         resultText.setString("It's a draw!");
     } else if (board.isWin(lastMoveRow, lastMoveCol, lastPlayerSymbol)) {
-        resultText.setString(
-            lastPlayerSymbol == 'X' ? "Player 1 (X) wins!" : "Player 2 (O) wins!"
-        );
+        if (lastPlayerSymbol == 'X')
+            resultText.setString("Player 1 (X) wins!");
+        else
+            resultText.setString("Player 2 (O) wins!");
     }
 
-    // 結果置中
-    resultText.setPosition(640 / 2 - resultText.getLocalBounds().width / 2, 180);
+    resultText.setPosition(
+        640 / 2 - resultText.getLocalBounds().width / 2,
+        640 / 2 - resultText.getLocalBounds().height / 2 - 100
+    );
     window.draw(resultText);
 
-    // Restart Button
+    // 動畫效果：文字放大
+    resultText.setScale(animScale, animScale);
+    window.draw(resultText); // 畫出結果文字
+
+    // ===== Restart 按鈕繪製 =====
     restartButton.setSize(sf::Vector2f(200, 50));
-    restartButton.setFillColor(sf::Color(70, 130, 180)); // Steel Blue
     restartButton.setPosition(220, 300);
+    sf::Color restartColor(70, 130, 180, 255 - static_cast<int>(restartHoverAlpha));
+    restartButton.setFillColor(restartColor);
     window.draw(restartButton);
+
+    sf::RectangleShape restartOutline(restartButton);
+    restartOutline.setFillColor(sf::Color::Transparent);
+    restartOutline.setOutlineThickness(2);
+    restartOutline.setOutlineColor(sf::Color::White);
+    window.draw(restartOutline);
+
+    for (int i = 0; i < 4; ++i) {
+        sf::CircleShape corner(10);
+        corner.setFillColor(restartColor);
+        float x = (i % 2 == 0) ? restartButton.getPosition().x : restartButton.getPosition().x + restartButton.getSize().x - 20;
+        float y = (i < 2) ? restartButton.getPosition().y : restartButton.getPosition().y + restartButton.getSize().y - 20;
+        corner.setPosition(x, y);
+        window.draw(corner);
+    }
 
     restartText.setFont(font);
     restartText.setCharacterSize(24);
@@ -162,15 +198,31 @@ void GameWindow::displayResult(sf::RenderWindow& window, sf::Font& font) {
     restartText.setFillColor(sf::Color::White);
     restartText.setPosition(
         restartButton.getPosition().x + (200 - restartText.getLocalBounds().width) / 2,
-        restartButton.getPosition().y + 8
+        restartButton.getPosition().y + 10
     );
     window.draw(restartText);
 
-    // Exit Button
+    // ===== Exit 按鈕繪製 =====
     exitButton.setSize(sf::Vector2f(200, 50));
-    exitButton.setFillColor(sf::Color(220, 20, 60)); // Crimson
     exitButton.setPosition(220, 380);
+    sf::Color exitColor(220, 20, 60, 255 - static_cast<int>(exitHoverAlpha));
+    exitButton.setFillColor(exitColor);
     window.draw(exitButton);
+
+    sf::RectangleShape exitOutline(exitButton);
+    exitOutline.setFillColor(sf::Color::Transparent);
+    exitOutline.setOutlineThickness(2);
+    exitOutline.setOutlineColor(sf::Color::White);
+    window.draw(exitOutline);
+
+    for (int i = 0; i < 4; ++i) {
+        sf::CircleShape corner(10);
+        corner.setFillColor(exitColor);
+        float x = (i % 2 == 0) ? exitButton.getPosition().x : exitButton.getPosition().x + exitButton.getSize().x - 20;
+        float y = (i < 2) ? exitButton.getPosition().y : exitButton.getPosition().y + exitButton.getSize().y - 20;
+        corner.setPosition(x, y);
+        window.draw(corner);
+    }
 
     exitText.setFont(font);
     exitText.setCharacterSize(24);
@@ -178,7 +230,7 @@ void GameWindow::displayResult(sf::RenderWindow& window, sf::Font& font) {
     exitText.setFillColor(sf::Color::White);
     exitText.setPosition(
         exitButton.getPosition().x + (200 - exitText.getLocalBounds().width) / 2,
-        exitButton.getPosition().y + 8
+        exitButton.getPosition().y + 10
     );
     window.draw(exitText);
 }
