@@ -4,10 +4,10 @@ Board::Board() : grid(SIZE, std::vector<char>(SIZE, '.')) {}
 
 
 void Board::reset() {
-    for (int i = 0; i < SIZE; ++i)
-        for (int j = 0; j < SIZE; ++j)
-            grid[i][j] = '.';
+    grid = std::vector<std::vector<char>>(SIZE, std::vector<char>(SIZE, ' '));
 }
+
+
 bool Board::placePiece(int row, int col, char symbol) {
     if (row < 0 || row >= SIZE || col < 0 || col >= SIZE || grid[row][col] != '.') return false;
     grid[row][col] = symbol;
@@ -25,7 +25,7 @@ bool Board::isFull() const {
     return true;
 }
 
-bool Board::isWin(int row, int col, char symbol) {
+bool Board::isWin(int row, int col, char symbol)  {  // 添加 const
     int dirs[4][2] = {{0,1},{1,0},{1,1},{1,-1}};
     for (auto& dir : dirs) {
         int dr = dir[0], dc = dir[1];
@@ -44,3 +44,9 @@ bool Board::isWin(int row, int col, char symbol) {
     }
     return false;
 }
+
+
+
+
+
+

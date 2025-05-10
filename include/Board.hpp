@@ -11,8 +11,9 @@ public:
     bool placePiece(int row, int col, char symbol);
     char getCell(int row, int col) const;
     bool isFull() const;
-    bool isWin(int row, int col, char symbol);
+    bool isWin(int row, int col, char symbol) ;
     void reset(); // ← 加這一行
+
 
 private:
     std::vector<std::vector<char>> grid;
