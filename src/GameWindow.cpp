@@ -25,7 +25,7 @@ bool GameWindow::run(sf::RenderWindow& window, sf::Font& font) {
     turnText.setFont(font);
     turnText.setCharacterSize(18);  // 設定字型大小
     turnText.setFillColor(sf::Color::Black);  // 設定文字顏色
-    turnText.setPosition(10, 700 - 30); // 置於畫面下方
+    turnText.setPosition(10, 630); // 置於畫面下方
 
     while (window.isOpen() && !wantToReturnToMenu && !wantToExit) {
         handleEvents(window);
@@ -141,7 +141,7 @@ void GameWindow::draw(sf::RenderWindow& window, sf::Font& font) {
     infoText.setCharacterSize(18);
     infoText.setFillColor(sf::Color::Black);
     infoText.setString("Player 1: Black (X)    Player 2: White (O)");
-    infoText.setPosition(10, 650);  // 棋盤下方
+    infoText.setPosition(10, 600);  // 棋盤下方
 
 
     window.draw(infoText);
@@ -302,6 +302,6 @@ void GameWindow::displayResult(sf::RenderWindow& window, sf::Font& font) {
     turnText.setCharacterSize(18);
     turnText.setFillColor(currentPlayer->getSymbol() == 'X' ? sf::Color::Black : sf::Color::White);
     turnText.setString(currentPlayer->getSymbol() == 'X' ? "Player 1's Turn (Black)" : "Player 2's Turn (White)");
-    turnText.setPosition(10, 670);  // 設置顯示位置
+    turnText.setPosition(10, 630);  // 設置顯示位置
     window.draw(turnText);  // 顯示回合文字
 }

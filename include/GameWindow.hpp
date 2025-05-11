@@ -12,7 +12,9 @@ public:
     bool run(sf::RenderWindow& window, sf::Font& font);
 
 private:
-    static constexpr int CELL_SIZE = 40;
+    int boardSize = 15; // 15x15 棋盤
+
+    int CELL_SIZE = 600 / boardSize;  
 
     char currentPlayerSymbol = 'X'; // 初始為 Player 1（黑子）
     sf::Clock clock;

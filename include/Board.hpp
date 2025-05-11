@@ -5,7 +5,7 @@
 
 class Board {
 public:
-    static const int SIZE = 16;  // 改為 16x16
+    static const int SIZE = 15;  
     Board();
 
     bool placePiece(int row, int col, char symbol);
