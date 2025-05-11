@@ -179,15 +179,19 @@ int AIPlayer::minimax(Board& board, int depth, bool maximizing, int alpha, int b
 }
 
 std::pair<int, int> AIPlayer::findBestMove(Board& board) {
-    
-    // 1. 優先阻止對手的四連或三連威脅
-    auto blockingMove = findBlockingMoveIfThreat(board);
-    if (blockingMove) {
-        return *blockingMove;
+    // 1. 優先檢查是否有可以獲勝的步驟
+    auto winningMove = findWinningMoveIfAvailable(board);
+    if (winningMove) {
+        return *winningMove;  // 如果有獲勝步驟，直接返回
     }
 
+    // 2. 優先阻止對手的四連或三連威脅
+    auto blockingMove = findBlockingMoveIfThreat(board);
+    if (blockingMove) {
+        return *blockingMove;  // 如果有阻止對手的步驟，返回
+    }
 
-    // 2. 沒有威脅時：使用 minimax + evaluateBoard() 找最好的進攻位置
+    // 3. 沒有威脅時：使用 minimax + evaluateBoard() 找最好的進攻位置
     int bestScore = std::numeric_limits<int>::min();
     std::pair<int, int> bestMove = {-1, -1};
 
@@ -226,6 +230,7 @@ std::pair<int, int> AIPlayer::findBestMove(Board& board) {
 
     return bestMove;
 }
+
 
 
 
@@ -336,17 +341,18 @@ std::optional<std::pair<int, int>> AIPlayer::findBlockingMoveIfThreat(Board& boa
 }
 
 
-std::optional<std::pair<int, int>> AIPlayer::findWinningMove(Board& board) {
+std::optional<std::pair<int, int>> AIPlayer::findWinningMoveIfAvailable(Board& board) {
     auto moves = generateMoves(board);
 
-    for (auto [r, c] : moves) {
-        board.placePiece(r, c, symbol);
-        if (board.isWin(r, c, symbol)) {
-            board.placePiece(r, c, '.'); // 還原
-            return std::make_pair(r, c); // 我可以贏，馬上下
+    for (auto& move : moves) {
+        auto [r, c] = move;
+        Board copy = board;
+        copy.placePiece(r, c, symbol);  // 嘗試這步驟
+
+        if (copy.isWin(r, c, symbol)) {
+            return move;  // 如果這步驟可以獲勝，返回
         }
-        board.placePiece(r, c, '.');
     }
 
-    return std::nullopt;
+    return std::nullopt;  // 如果沒有獲勝的步驟，返回 nullopt
 }

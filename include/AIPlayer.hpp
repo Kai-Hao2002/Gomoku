@@ -14,7 +14,7 @@ public:
     AIPlayer(char symbol);
     void makeMove(Board& board, int& row, int& col) override;
     std::optional<std::pair<int, int>> findBlockingMoveIfThreat(Board& board);
-    std::optional<std::pair<int, int>> findWinningMove(Board& board);
+    std::optional<std::pair<int, int>> findWinningMoveIfAvailable(Board& board);
 
 private:
     char opponentSymbol;
