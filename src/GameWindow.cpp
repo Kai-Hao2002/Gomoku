@@ -2,7 +2,6 @@
 #include "HumanPlayer.hpp"
 #include "AIPlayer.hpp"
 #include <iostream>
-#include <SFML/System.hpp>  // 引入 sf::Clock
 #include <cmath>  // 引入 <cmath> 库以使用 sin 函数
 
 GameWindow::GameWindow(std::unique_ptr<Player> p1, std::unique_ptr<Player> p2, bool isPvP)
@@ -184,7 +183,6 @@ void GameWindow::displayResult(sf::RenderWindow& window, sf::Font& font) {
 
     // 結果文字
     sf::Text resultText;
-    sf::Clock clock;
     resultText.setFont(font);
     resultText.setCharacterSize(48);  // 放大文字
     resultText.setFillColor(sf::Color::Yellow);  // 高亮顯示結果
@@ -199,19 +197,19 @@ void GameWindow::displayResult(sf::RenderWindow& window, sf::Font& font) {
         resultText.setString(lastPlayerSymbol == 'X' ? "Player 1 (X) wins!" : "Player 2 (O) wins!");
     }
 
-   // 動畫縮放
+    // 動畫縮放
     resultText.setScale(animScale, animScale);
 
-    // 計算位置
+    // 計算文字位置
     sf::FloatRect textBounds = resultText.getLocalBounds();
     float textX = 640.f / 2.f - textBounds.width / 2.f;
-    float textY = 640.f / 2.f - textBounds.height / 2.f - 120.f;
+    float textY = 700.f / 2.f - textBounds.height / 2.f - 120.f;
     resultText.setPosition(textX, textY);
 
-    // 建立背景框框
+    // 計算背景框的大小，根據動畫縮放後的文字大小調整
     sf::RectangleShape resultBox;
-    resultBox.setSize(sf::Vector2f(textBounds.width + 40.f, textBounds.height + 30.f));
-    resultBox.setPosition(textX - 20.f, textY - 15.f);
+    resultBox.setSize(sf::Vector2f(textBounds.width * animScale + 40.f, textBounds.height * animScale + 30.f));
+    resultBox.setPosition(textX - 20.f * animScale, textY - 15.f * animScale);
     resultBox.setFillColor(sf::Color(50, 50, 50, 200));  // 半透明深灰背景
     resultBox.setOutlineColor(sf::Color::Yellow);        // 黃色邊框
     resultBox.setOutlineThickness(3.f);
@@ -306,6 +304,4 @@ void GameWindow::displayResult(sf::RenderWindow& window, sf::Font& font) {
     turnText.setString(currentPlayer->getSymbol() == 'X' ? "Player 1's Turn (Black)" : "Player 2's Turn (White)");
     turnText.setPosition(10, 670);  // 設置顯示位置
     window.draw(turnText);  // 顯示回合文字
-
-
 }

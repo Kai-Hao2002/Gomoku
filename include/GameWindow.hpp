@@ -3,6 +3,8 @@
 #include "Board.hpp"
 #include "Player.hpp"
 #include <memory>
+#include <SFML/System.hpp>  // 引入 sf::Clock
+#include <cmath>  // 引入 <cmath> 库以使用 sin 函数
 
 class GameWindow {
 public:
@@ -13,7 +15,7 @@ private:
     static constexpr int CELL_SIZE = 40;
 
     char currentPlayerSymbol = 'X'; // 初始為 Player 1（黑子）
-
+    sf::Clock clock;
 
     std::unique_ptr<Player> p1, p2;
     Player* currentPlayer;
