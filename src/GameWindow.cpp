@@ -12,33 +12,33 @@ GameWindow::GameWindow(std::unique_ptr<Player> p1, std::unique_ptr<Player> p2, b
     lastMoveCol = -1;        // 初始化最後下棋的列
 }
 
-bool GameWindow::run(sf::RenderWindow& window, sf::Font& font) {
-    wantToReturnToMenu = false;
+GameResult GameWindow::run(sf::RenderWindow& window, sf::Font& font) {
+    wantToRestart = false;
     wantToExit = false;
+    wantToModeSelection = false;
     gameOver = false;
     currentPlayer = p1.get();
     board = Board();  // 重置棋盤
     justRestarted = true;
 
-    // 創建顯示回合資訊的文字
+    // 回合文字顯示
     sf::Text turnText;
     turnText.setFont(font);
-    turnText.setCharacterSize(18);  // 設定字型大小
-    turnText.setFillColor(sf::Color::Black);  // 設定文字顏色
-    turnText.setPosition(10, 630); // 置於畫面下方
+    turnText.setCharacterSize(18);
+    turnText.setFillColor(sf::Color::Black);
+    turnText.setPosition(10, 630);
 
-    while (window.isOpen() && !wantToReturnToMenu && !wantToExit) {
+    while (window.isOpen() && !wantToRestart && !wantToExit && !wantToModeSelection) {
         handleEvents(window);
         update();
 
         window.clear(sf::Color::White);
         draw(window, font);
 
-        // 根據當前玩家顯示不同的回合資訊
+        // 更新回合文字
         if (gameOver) {
-            turnText.setString("");  // 遊戲結束時隱藏回合資訊
+            turnText.setString("");
         } else {
-            // 清除過期的文字，並只顯示當前玩家的回合
             if (currentPlayer->getSymbol() == 'X') {
                 turnText.setString("Player 1's Turn (Black)");
             } else if (currentPlayer->getSymbol() == 'O') {
@@ -46,17 +46,20 @@ bool GameWindow::run(sf::RenderWindow& window, sf::Font& font) {
             }
         }
 
-        window.draw(turnText); // 繪製回合訊息
+        window.draw(turnText);
 
         if (gameOver) {
-            displayResult(window, font);  // 顯示遊戲結束畫面
+            displayResult(window, font);
         }
 
         window.display();
     }
 
-    return wantToReturnToMenu; // true 表示回主選單，false 表示退出
+    if (wantToModeSelection) return GameResult::ReturnToMenu;
+    if (wantToRestart) return GameResult::Restart;
+    return GameResult::Exit;
 }
+
 
 
 
@@ -79,7 +82,7 @@ void GameWindow::handleEvents(sf::RenderWindow& window) {
             if (gameOver) {
                 // 檢查 Restart 按鈕是否被點擊
                 if (restartButton.getGlobalBounds().contains(worldPos)) {
-                    wantToReturnToMenu = true;
+                    wantToRestart = true;
                     return;
                 }
 
@@ -87,6 +90,11 @@ void GameWindow::handleEvents(sf::RenderWindow& window) {
                 if (exitButton.getGlobalBounds().contains(worldPos)) {
                     wantToExit = true;
                     window.close();
+                    return;
+                }
+                // 檢查 GameMode 按鈕是否被點擊
+                if (gameModeButton.getGlobalBounds().contains(worldPos)) {
+                    wantToModeSelection = true;
                     return;
                 }
 
@@ -176,11 +184,12 @@ void GameWindow::displayResult(sf::RenderWindow& window, sf::Font& font) {
     sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
     bool hoveringRestart = restartButton.getGlobalBounds().contains(mousePos);
     bool hoveringExit = exitButton.getGlobalBounds().contains(mousePos);
+    bool hoveringBackToMode = gameModeButton.getGlobalBounds().contains(mousePos);
 
     // 更新 hover alpha 值（漸變動畫）
     restartHoverAlpha = hoveringRestart ? std::min(255.f, restartHoverAlpha + 10.f) : std::max(0.f, restartHoverAlpha - 10.f);
     exitHoverAlpha = hoveringExit ? std::min(255.f, exitHoverAlpha + 10.f) : std::max(0.f, exitHoverAlpha - 10.f);
-
+    gameModeHoverAlpha = hoveringBackToMode ? std::min(255.f, gameModeHoverAlpha + 10.f) : std::max(0.f, gameModeHoverAlpha - 10.f);
     // 結果文字
     sf::Text resultText;
     resultText.setFont(font);
@@ -250,6 +259,7 @@ void GameWindow::displayResult(sf::RenderWindow& window, sf::Font& font) {
     );
     window.draw(restartText);
 
+
     // ===== Exit 按鈕繪製 =====
     exitButton.setSize(sf::Vector2f(200, 50));
     exitButton.setPosition(220, 380);
@@ -304,46 +314,139 @@ void GameWindow::displayResult(sf::RenderWindow& window, sf::Font& font) {
     turnText.setString(currentPlayer->getSymbol() == 'X' ? "Player 1's Turn (Black)" : "Player 2's Turn (White)");
     turnText.setPosition(10, 630);  // 設置顯示位置
     window.draw(turnText);  // 顯示回合文字
+
+     // ===== Game Mode 按鈕繪製 =====
+    gameModeButton.setSize(sf::Vector2f(200, 50));
+    gameModeButton.setPosition(220, 460);
+    sf::Color gameModeColor(255, 165, 0, 255 - static_cast<int>(gameModeHoverAlpha));
+    gameModeButton.setFillColor(gameModeColor);
+    window.draw(gameModeButton);
+
+    sf::RectangleShape gameModeOutline(gameModeButton);
+    gameModeOutline.setFillColor(sf::Color::Transparent);
+    gameModeOutline.setOutlineThickness(2);
+    gameModeOutline.setOutlineColor(sf::Color::White);
+    window.draw(gameModeOutline);
+
+    for (int i = 0; i < 4; ++i) {
+        sf::CircleShape corner(10);
+        corner.setFillColor(gameModeColor);
+        float x = (i % 2 == 0) ? gameModeButton.getPosition().x : gameModeButton.getPosition().x + gameModeButton.getSize().x - 20;
+        float y = (i < 2) ? gameModeButton.getPosition().y : gameModeButton.getPosition().y + gameModeButton.getSize().y - 20;
+        corner.setPosition(x, y);
+        window.draw(corner);
+    }
+
+    gameModeText.setFont(font);
+    gameModeText.setCharacterSize(24);
+    gameModeText.setString("Back to Menu");
+    gameModeText.setFillColor(sf::Color::White);
+    gameModeText.setPosition(
+        gameModeButton.getPosition().x + (200 - gameModeText.getLocalBounds().width) / 2,
+        gameModeButton.getPosition().y + 10
+    );
+    window.draw(gameModeText);
+    
 }
+
+
 bool GameWindow::showModeSelection(sf::RenderWindow& window, sf::Font& font, bool& isPvP) {
     sf::Text title("Select Game Mode", font, 36);
-    title.setPosition(140, 50);
     title.setFillColor(sf::Color::Black);
+    title.setPosition(145, 60);
 
-    sf::Text pvpText("1. Player vs Player", font, 28);
-    pvpText.setPosition(180, 150);
-    pvpText.setFillColor(sf::Color::Blue);
+    struct Button {
+        sf::RectangleShape shape;
+        sf::Text text;
+        float hoverAlpha = 0.0f;
+    };
 
-    sf::Text pvcText("2. Player vs Computer", font, 28);
-    pvcText.setPosition(180, 220);
-    pvcText.setFillColor(sf::Color::Blue);
+    std::vector<Button> buttons(3);
+
+    const std::vector<std::string> labels = {
+        "Player vs Player", "Player vs Computer", "Exit Game"
+    };
+    const float startY = 180;
+    const float spacing = 80;
+
+    for (int i = 0; i < 3; ++i) {
+        auto& btn = buttons[i];
+
+        btn.shape.setSize(sf::Vector2f(300, 50));
+        btn.shape.setPosition(150, startY + i * spacing);
+        btn.shape.setFillColor(sf::Color(255, 165, 0));  // 預設色
+
+        btn.text.setFont(font);
+        btn.text.setCharacterSize(24);
+        btn.text.setString(labels[i]);
+        btn.text.setFillColor(sf::Color::White);
+        btn.text.setPosition(
+            btn.shape.getPosition().x + (300 - btn.text.getLocalBounds().width) / 2,
+            btn.shape.getPosition().y + 10
+        );
+    }
 
     while (window.isOpen()) {
+        sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+
         sf::Event event;
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed) {
                 window.close();
                 return false;
             }
-
-            if (event.type == sf::Event::MouseButtonPressed) {
-                auto worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-                if (pvpText.getGlobalBounds().contains(worldPos)) {
-                    isPvP = true;
-                    return true;
-                } else if (pvcText.getGlobalBounds().contains(worldPos)) {
-                    isPvP = false;
-                    return true;
+            if (event.type == sf::Event::MouseButtonPressed &&
+                event.mouseButton.button == sf::Mouse::Left) {
+                for (int i = 0; i < 3; ++i) {
+                    if (buttons[i].shape.getGlobalBounds().contains(mousePos)) {
+                        if (i == 0) { isPvP = true; return true; }
+                        if (i == 1) { isPvP = false; return true; }
+                        if (i == 2) { window.close(); return false; }
+                    }
                 }
+            }
+        }
+
+        // 更新 hover 效果
+        for (auto& btn : buttons) {
+            if (btn.shape.getGlobalBounds().contains(mousePos)) {
+                btn.hoverAlpha = std::min(100.0f, btn.hoverAlpha + 10.f);  // 控制變暗程度
+            } else {
+                btn.hoverAlpha = std::max(0.0f, btn.hoverAlpha - 10.f);
             }
         }
 
         window.clear(sf::Color(255, 255, 240));
         window.draw(title);
-        window.draw(pvpText);
-        window.draw(pvcText);
+
+        for (auto& btn : buttons) {
+            // 填色與 hover效果（變暗處理）
+            sf::Color btnColor(255 - static_cast<int>(btn.hoverAlpha), 165 - static_cast<int>(btn.hoverAlpha), 0);  // Darken the color
+            btn.shape.setFillColor(btnColor);
+            window.draw(btn.shape);
+
+            // 邊框
+            sf::RectangleShape outline(btn.shape);
+            outline.setFillColor(sf::Color::Transparent);
+            outline.setOutlineThickness(2);
+            outline.setOutlineColor(sf::Color::White);
+            window.draw(outline);
+
+            // 四個圓角圓點
+            for (int i = 0; i < 4; ++i) {
+                sf::CircleShape corner(10);
+                corner.setFillColor(btnColor);
+                float x = (i % 2 == 0) ? btn.shape.getPosition().x : btn.shape.getPosition().x + btn.shape.getSize().x - 20;
+                float y = (i < 2) ? btn.shape.getPosition().y : btn.shape.getPosition().y + btn.shape.getSize().y - 20;
+                corner.setPosition(x, y);
+                window.draw(corner);
+            }
+
+            window.draw(btn.text);
+        }
+
         window.display();
     }
 
-    return false;  // 視窗被關閉
+    return false;
 }

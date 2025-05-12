@@ -22,8 +22,7 @@ int main() {
         bool isPvP;
         if (!GameWindow::showModeSelection(window, font, isPvP)) return -1;
 
-        bool restart = false;
-        do {
+        while (window.isOpen()) {
             std::unique_ptr<Player> p1 = std::make_unique<HumanPlayer>('X');
             std::unique_ptr<Player> p2;
 
@@ -34,11 +33,21 @@ int main() {
             }
 
             GameWindow gameWindow(std::move(p1), std::move(p2), isPvP);
-            restart = gameWindow.run(window, font);  // ✅ 修正：加上 font 傳入
+            GameResult result = gameWindow.run(window, font);
 
             if (!window.isOpen()) break;
 
-        } while (restart);  // 若使用者返回主選單，則重新建構並開始新遊戲
+            if (result == GameResult::Restart) {
+                // 繼續下一輪，什麼都不做
+                continue;
+            } else if (result == GameResult::ReturnToMenu) {
+                // 跳出內層 while，重新回到模式選擇
+                break;
+            } else {
+                // 離開遊戲
+                window.close();
+            }
+        }
     }
 
     return 0;
