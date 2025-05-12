@@ -10,6 +10,7 @@ class GameWindow {
 public:
     GameWindow(std::unique_ptr<Player> p1, std::unique_ptr<Player> p2, bool isPvP);
     bool run(sf::RenderWindow& window, sf::Font& font);
+    static bool showModeSelection(sf::RenderWindow& window, sf::Font& font, bool& isPvP);
 
 private:
     int boardSize = 15; // 15x15 棋盤

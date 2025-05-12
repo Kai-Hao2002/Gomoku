@@ -8,50 +8,6 @@
 const float VIRTUAL_WIDTH = 600;
 const float VIRTUAL_HEIGHT = 660;  // 多出 60px 顯示資訊欄
 
-
-bool showModeSelection(sf::RenderWindow& window, sf::Font& font, bool& isPvP) {
-    sf::Text title("Select Game Mode", font, 36);
-    title.setPosition(140, 50);
-    title.setFillColor(sf::Color::Black);
-
-    sf::Text pvpText("1. Player vs Player", font, 28);
-    pvpText.setPosition(180, 150);
-    pvpText.setFillColor(sf::Color::Blue);
-
-    sf::Text pvcText("2. Player vs Computer", font, 28);
-    pvcText.setPosition(180, 220);
-    pvcText.setFillColor(sf::Color::Blue);
-
-    while (window.isOpen()) {
-        sf::Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
-                window.close();
-                return false;
-            }
-
-            if (event.type == sf::Event::MouseButtonPressed) {
-                auto worldPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-                if (pvpText.getGlobalBounds().contains(worldPos)) {
-                    isPvP = true;
-                    return true;
-                } else if (pvcText.getGlobalBounds().contains(worldPos)) {
-                    isPvP = false;
-                    return true;
-                }
-            }
-        }
-
-        window.clear(sf::Color(255, 255, 240));
-        window.draw(title);
-        window.draw(pvpText);
-        window.draw(pvcText);
-        window.display();
-    }
-
-    return false;  // 視窗被關閉
-}
-
 int main() {
     sf::RenderWindow window(sf::VideoMode(VIRTUAL_WIDTH, VIRTUAL_HEIGHT), "Gomoku", sf::Style::Titlebar | sf::Style::Close);
     window.setFramerateLimit(60);
@@ -64,8 +20,7 @@ int main() {
 
     while (window.isOpen()) {
         bool isPvP;
-        if (!showModeSelection(window, font, isPvP))
-            break;
+        if (!GameWindow::showModeSelection(window, font, isPvP)) return -1;
 
         bool restart = false;
         do {
