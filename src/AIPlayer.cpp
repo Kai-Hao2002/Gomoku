@@ -114,6 +114,7 @@ int AIPlayer::evaluateLine(const std::vector<char>& line, char currentSymbol) {
 // --- 只產生鄰近已下棋子的空格（效率優化） --- //
 std::vector<std::pair<int, int>> AIPlayer::generateMoves(Board& board) {
     std::vector<std::pair<int, int>> moves;
+    
     const int range = 1;
 
     for (int i = 0; i < Board::SIZE; ++i) {
@@ -139,11 +140,23 @@ std::vector<std::pair<int, int>> AIPlayer::generateMoves(Board& board) {
 
 // --- Minimax + Alpha-Beta + Zobrist Transposition Table --- //
 int AIPlayer::minimax(Board& board, int depth, bool maximizing, int alpha, int beta) {
+    std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
+    std::chrono::milliseconds maxTime(1000);  // 設定最大思考時間為 1000 毫秒
+    
     uint64_t hash = computeZobristHash(board);
-    if (transpositionTable.count(hash)) return transpositionTable[hash];
+    auto now = std::chrono::high_resolution_clock::now();
+    if (now - startTime > maxTime) {
+        return evaluateBoard(board);  // 超過時間限制，直接返回評分
+    }
+    // 檢查轉置表
+    if (transpositionTable.count(hash)) {
+        // 如果轉置表中有此狀態，返回已儲存的評分
+        return transpositionTable[hash];
+    }
 
     if (depth == 0 || board.isFull()) {
         int eval = evaluateBoard(board);
+        // 將此狀態和評分存入轉置表
         transpositionTable[hash] = eval;
         return eval;
     }
@@ -151,18 +164,34 @@ int AIPlayer::minimax(Board& board, int depth, bool maximizing, int alpha, int b
     auto moves = generateMoves(board);
     int bestVal = maximizing ? std::numeric_limits<int>::min() : std::numeric_limits<int>::max();
 
+    // 使用平行化或順序處理
+    std::vector<std::future<int>> futures;
+
     for (auto [r, c] : moves) {
         board.placePiece(r, c, maximizing ? symbol : opponentSymbol);
-        int score = 0;
 
         if (board.isWin(r, c, maximizing ? symbol : opponentSymbol)) {
-            score = maximizing ? 100000 : -100000;
-        } else {
-            score = minimax(board, depth - 1, !maximizing, alpha, beta);
+            int score = maximizing ? 100000 : -100000;
+            bestVal = maximizing ? std::max(bestVal, score) : std::min(bestVal, score);
+            board.placePiece(r, c, '.');
+            if (maximizing) {
+                alpha = std::max(alpha, bestVal);
+            } else {
+                beta = std::min(beta, bestVal);
+            }
+            if (beta <= alpha) break;
+            continue;
         }
 
-        board.placePiece(r, c, '.');
+        futures.push_back(std::async(std::launch::async, [this, r, c, maximizing, depth, alpha, beta, &board]() {
+            int score = minimax(board, depth - 1, !maximizing, alpha, beta);
+            board.placePiece(r, c, '.');
+            return score;
+        }));
+    }
 
+    for (auto& f : futures) {
+        int score = f.get();
         if (maximizing) {
             bestVal = std::max(bestVal, score);
             alpha = std::max(alpha, score);
@@ -174,9 +203,11 @@ int AIPlayer::minimax(Board& board, int depth, bool maximizing, int alpha, int b
         if (beta <= alpha) break;
     }
 
+    // 存儲最終結果到轉置表
     transpositionTable[hash] = bestVal;
     return bestVal;
 }
+
 
 std::pair<int, int> AIPlayer::findBestMove(Board& board) {
     // 1. 優先檢查是否有可以獲勝的步驟
