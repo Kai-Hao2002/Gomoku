@@ -42,7 +42,7 @@ rule CUSTOM_COMMAND
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = C:\msys64\ucrt64\bin\cmake.exe --regenerate-during-build -SC:\Users\User\Documents\gomoku -BC:\Users\User\Documents\gomoku\build
+  command = C:\msys64\ucrt64\bin\cmake.exe --regenerate-during-build -SC:\Users\User\Documents\gobang\Gomoku -BC:\Users\User\Documents\gobang\Gomoku\build
   description = Re-running CMake...
   generator = 1
 

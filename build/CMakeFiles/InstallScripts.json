@@ -1,7 +1,7 @@
 {
 	"InstallScripts" : 
 	[
-		"C:/Users/User/Documents/gomoku/build/cmake_install.cmake"
+		"C:/Users/User/Documents/gobang/Gomoku/build/cmake_install.cmake"
 	],
 	"Parallel" : false
 }
